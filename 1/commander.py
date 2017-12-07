@@ -11,6 +11,4 @@ parser.add_argument('--cuDNN',default=False)
 sp.check_output('python3 train_imagenet_data_parallel.py \
 train.txt val.txt -a resnet50 -B 64 -j 8 -m train_mean.npy -R ~/workspace/ -o 1205 -E 1')
 
-
-
-aaaaaaaa
+test
