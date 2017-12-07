@@ -17,12 +17,12 @@ if args.cuDNN:
 else:
     sp.check_output('export CHAINER_CUDNN=0',shell=True)
 
-workspace = args.rootdir + '/example/imagent'
+workspace = args.rootdir + '/examples/imagenet'
 
 os.chdir(workspace)
 
 cmd = 'python3 train_imagenet_data_parallel.py train.txt val.txt' \
-      ' -a resnet50 -B 64 -j 8 -m train_mean.npy -R ~/workspace/ -o 026 -E 1'
+      ' -a resnet50 -B 64 -j 8 -m train_mean.npy -R /home/cs28/workspace/ -o 026 -E 1'
 
 sp.run(cmd,shell=True)
 #sp.check_output('cd'+workspace)
