@@ -291,7 +291,10 @@ class Trainer(object):
             initializer = getattr(entry.extension, 'initialize', None)
             if initializer:
                 initializer(self)
-
+        updaters = []
+        #beta_updater = self.updater
+       # beta_updater.optimizer.hyperparam.lr = 0.5
+        self.updater.optimizer.hyperparam.lr = 100
         update = self.updater.update
         reporter = self.reporter
         stop_trigger = self.stop_trigger
