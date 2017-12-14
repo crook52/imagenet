@@ -31,7 +31,7 @@ sp.check_output('pwd',shell=True)
 main_output = args.o
 sub_output = args.o
 
-runLR = 0.01 ##init
+globalLR = 0.01 ##init
 
 for epoch in range(args.maxEpoch):
     best_err = float('inf')
@@ -40,7 +40,7 @@ for epoch in range(args.maxEpoch):
 
         sub_cmd = 'python3 ymd_sub.py' \
                   ' --out ' + sub_output + \
-                  ' --LR ' + str(lr_list[lr_num]*runLR) + \
+                  ' --LR ' + str(lr_list[lr_num]*globalLR) + \
                   ' --epoch ' + str(epoch) + \
                   ' --iteration ' + str(2)
         print(sub_cmd)
@@ -56,11 +56,11 @@ for epoch in range(args.maxEpoch):
     print('I chose {}',bestLR)
     main_cmd = 'python3 ymd_main.py' \
                ' --out ' + main_output +\
-               ' --LR ' + str(bestLR*runLR)+ \
+               ' --LR ' + str(bestLR*globalLR)+ \
                ' --epoch ' + str(epoch)
     print(main_cmd)
     sp.run(main_cmd,shell=True)
-    runLR = bestLR*runLR
+    globalLR = bestLR*globalLR
 
 #sp.check_output('cd'+workspace)
 #sp.check_output('python3 train_imagenet_data_parallel.py \

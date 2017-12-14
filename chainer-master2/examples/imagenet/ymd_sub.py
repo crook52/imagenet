@@ -84,7 +84,7 @@ def main():
     parser.add_argument('--test', action='store_true')
     parser.add_argument('--LR', type=float, default=0.01, help='pre train LR')
     parser.add_argument('--iteration', type=int, default=100)
-
+    parser.add_argument('--gLR', type=float)
     parser.set_defaults(test=False)
     args = parser.parse_args()
 
@@ -117,7 +117,7 @@ def main():
         val, args.val_batchsize, repeat=False, n_processes=args.loaderjob)
 
     # Set up an optimizer
-    optimizer = chainer.optimizers.MomentumSGD(lr=args.LR, momentum=0.9)
+    optimizer = chainer.optimizers.MomentumSGD(lr=args.LR*args.gLR, momentum=0.9)
     optimizer.setup(model2)
 
     # Set up a trainer
