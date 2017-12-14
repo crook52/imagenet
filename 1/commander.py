@@ -40,7 +40,8 @@ for epoch in range(args.maxEpoch):
 
         sub_cmd = 'python3 ymd_sub.py' \
                   ' --out ' + sub_output + \
-                  ' --LR ' + str(lr_list[lr_num]*globalLR) + \
+                  ' --LR ' + str(lr_list[lr_num]) + \
+                  ' --gLR ' + str(globalLR) + \
                   ' --epoch ' + str(epoch) + \
                   ' --iteration ' + str(2)
         print(sub_cmd)
