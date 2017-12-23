@@ -28,6 +28,8 @@ import googlenetbn
 import nin
 import resnet50
 import train_imagenet
+import csv
+
 
 
 def set_random_seed(seed):
@@ -51,21 +53,21 @@ def main():
         'resnet50': resnet50.ResNet50
     }
 
-    set_random_seed(0) ####固定
+
 
     parser = argparse.ArgumentParser(
         description='Learning convnet from ILSVRC2012 dataset')
-    parser.add_argument('train', help='Path to training image-label list file')
-    parser.add_argument('val', help='Path to validation image-label list file')
+    parser.add_argument('--train', default='train.txt', help='Path to training image-label list file')
+    parser.add_argument('--val', default='val.txt', help='Path to validation image-label list file')
     parser.add_argument('--arch', '-a', choices=archs.keys(),
                         default='resnet50', help='Convnet architecture')
     parser.add_argument('--batchsize', '-B', type=int, default=64,
                         help='Learning minibatch size')
-    parser.add_argument('--epoch', '-E', type=int, default=20,
+    parser.add_argument('--epoch', '-E', type=int, default=10,
                         help='Number of epochs to train')
     parser.add_argument('--gpus', '-g', type=int, nargs="*",
                         default=[0, 1, 2, 3, 4, 5, 6, 7])
-    parser.add_argument('--initmodel',
+    parser.add_argument('--initmodel', default='ymd_model',
                         help='Initialize the model from given file')
     parser.add_argument('--loaderjob', '-j', type=int, default=8,
                         help='Number of parallel data loading processes')
@@ -73,28 +75,36 @@ def main():
                         help='Mean file (computed by compute_mean.py)')
     parser.add_argument('--resume', '-r', default='',
                         help='Initialize the trainer from given file')
-    parser.add_argument('--out', '-o', default='ORG_lr*8',
+    parser.add_argument('--out', '-o', default='result',
                         help='Output directory')
     parser.add_argument('--root', '-R', default='/home/dnn/',
                         help='Root directory path of image files')
     parser.add_argument('--val_batchsize', '-b', type=int, default=250,
                         help='Validation minibatch size')
     parser.add_argument('--test', action='store_true')
+    parser.add_argument('--LR', type=float, default=0.01, help='pre train LR')
+    parser.add_argument('--iteration', type=int, default=100)
+    parser.add_argument('--gLR', type=float)
     parser.set_defaults(test=False)
     args = parser.parse_args()
 
+    set_random_seed(args.epoch)  ####固定
+
+    resume_model = args.out + '/' + args.initmodel
+
     # Initialize the model to train
     model = archs[args.arch]()
-    if args.initmodel:
-        print('Load model from', args.initmodel)
-        chainer.serializers.load_npz(args.initmodel, model)
+    if args.initmodel and not args.epoch == 0:
+        print('Load model from', resume_model)
+        chainer.serializers.load_npz(resume_model, model)
+    model2 = model
 
     # Load the datasets and mean file
     mean = np.load(args.mean)
     train = train_imagenet.PreprocessedDataset(
-        args.train, args.root, mean, model.insize, 10) ##Falseを追加でも固定できる
+        args.train, args.root, mean, model2.insize, args.epoch) ##Falseを追加でも固定できる
     val = train_imagenet.PreprocessedDataset(
-        args.val, args.root, mean, model.insize, random=False)
+        args.val, args.root, mean, model2.insize, args.epoch, random=False)
     # These iterators load the images with subprocesses running in parallel to
     # the training/validation.
     devices = tuple(args.gpus)
@@ -108,46 +118,51 @@ def main():
         val, args.val_batchsize, repeat=False, n_processes=args.loaderjob)
 
     # Set up an optimizer
-    optimizer = chainer.optimizers.MomentumSGD(lr=0.01*len(devices), momentum=0.9)
-    optimizer.setup(model)
+
+    optimizer = chainer.optimizers.MomentumSGD(lr=args.LR*args.gLR*len(devices), momentum=0.9)
+    optimizer.setup(model2)
 
     # Set up a trainer
     updater = updaters.MultiprocessParallelUpdater(train_iters, optimizer,
                                                    devices=devices)
     #trainer = training.Trainer(updater, (args.epoch, 'epoch'), args.out)
-    trainer = training.Trainer(updater, (args.epoch, 'epoch'), args.out)
+    trainer = training.Trainer(updater, (args.iteration, 'iteration'), args.out)
     if args.test:
         val_interval = 5, 'epoch'
         log_interval = 1, 'epoch'
     else:
-        val_interval = 1, 'epoch'
-        small_log_interval = 1, 'iteration'
-        log_interval = 100, 'iteration'
-        print_interval = 1000, 'iteration'
-        snapshot_interval = 10, 'epoch'
+        val_interval = 100000, 'iteration'
+        sub_log_interval = 1, 'iteration'
+        log_interval = 10, 'iteration'
 
-    trainer.extend(extensions.Evaluator(val_iter, model, device=args.gpus[0]),
-                   trigger=val_interval)
-    trainer.extend(extensions.dump_graph('main/loss'))
-    trainer.extend(extensions.snapshot(), trigger=snapshot_interval)
-    trainer.extend(extensions.snapshot_object(
-        model, 'model_iter_{.updater.iteration}'), trigger=snapshot_interval)
+
+    # trainer.extend(extensions.Evaluator(val_iter, model2, device=args.gpus[0]),
+    #                trigger=val_interval)
+    #trainer.extend(extensions.dump_graph('main/loss'))
+   # trainer.extend(extensions.snapshot(), trigger=log_interval)
+    #trainer.extend(extensions.snapshot_object(
+   #     model2, 'model_iter_{.updater.iteration}'), trigger=val_interval)
     # Be careful to pass the interval directly to LogReport
     # (it determines when to emit log rather than when to read observations)
-    trainer.extend(extensions.LogReport(trigger=log_interval))
-    trainer.extend(extensions.LogReport(trigger=small_log_interval, log_name='iteration_log'))
-    trainer.extend(extensions.LogReport(trigger=val_interval, log_name='epoch_log'))
-    trainer.extend(extensions.observe_lr(), trigger=log_interval)
+    print(str(args.epoch)+'_'+str(args.LR))
+    trainer.extend(extensions.LogReport(trigger=sub_log_interval, log_name=str(args.epoch)+'_'+str(args.LR)))
+    trainer.extend(extensions.LogReport(trigger=log_interval, log_name='10_' + str(args.epoch) + '_' + str(args.LR)))
+    trainer.extend(extensions.observe_lr(), trigger=sub_log_interval)
     trainer.extend(extensions.PrintReport([
         'epoch', 'iteration', 'main/loss', 'validation/main/loss',
         'main/accuracy', 'validation/main/accuracy', 'lr'
-    ]), trigger=print_interval)
-    trainer.extend(extensions.ProgressBar(update_interval=2))
+    ]), trigger=log_interval)
+   # trainer.extend(extensions.ProgressBar(update_interval=2))
 
     if args.resume:
         chainer.serializers.load_npz(args.resume, trainer)
     trainer.run()
-
+    # print(train.observation)
+    # accuracy = trainer.observation['main/accuracy']
+    # filename = args.out+'/accuracys.csv'
+    # f = open(filename,'a')
+    # writer = csv.writer(f, lineterminator='\n')
+    # writer.writerow(accuracy)
 
 if __name__ == '__main__':
     main()

@@ -291,7 +291,17 @@ class Trainer(object):
             initializer = getattr(entry.extension, 'initialize', None)
             if initializer:
                 initializer(self)
+<<<<<<< HEAD
+<<<<<<< HEAD
 
+=======
+        self.updater.optimizer.hyperparam.lr = 100
+        print('しんどすぎる')
+>>>>>>> origin/1213
+=======
+        self.updater.optimizer.hyperparam.lr = 100
+        print('しんどすぎる')
+>>>>>>> origin/1213
         update = self.updater.update
         reporter = self.reporter
         stop_trigger = self.stop_trigger
