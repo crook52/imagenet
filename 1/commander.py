@@ -33,7 +33,7 @@ sub_output = args.o
 globalLR = 0.01 ##init
 
 for epoch in range(args.maxEpoch):
-    best_err = float('inf')
+    best_accuracy = 0.0
     bestLR = 1000000
     for lr_num in range(len(lr_list)):
 
@@ -42,21 +42,21 @@ for epoch in range(args.maxEpoch):
                   ' --LR ' + str(lr_list[lr_num]) + \
                   ' --gLR ' + str(globalLR) + \
                   ' --epoch ' + str(epoch) + \
-                  ' --iteration ' + str(1000)
+                  ' --iteration ' + str(300)
         print(sub_cmd)
         sp.run(sub_cmd,shell=True)
         filename = workspace+'/'+args.o+'/'+str(epoch)+'_'+str(lr_list[lr_num])
         print(filename)
         data = json.load(open(filename))
-        new_err = data[len(data)-1]['main/loss']
-        if best_err > new_err:
+        new_accuracy = data[len(data)-1]['main/accuracy']
+        if best_accuracy < new_accuracy:
             bestLR=lr_list[lr_num]
-            best_err = new_err
+            best_accuracy = new_accuracy
 
     print('I chose',bestLR)
     main_cmd = 'python3 ymd_main.py' \
                ' --out ' + main_output +\
-               ' --LR ' + str(bestLR*globalLR)+ \
+               ' --LR ' + str(bestLR*globalLR) + \
                ' --epoch ' + str(epoch)
     print(main_cmd)
     sp.run(main_cmd,shell=True)

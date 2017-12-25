@@ -133,7 +133,7 @@ def main():
     else:
         val_interval = 100000, 'iteration'
         sub_log_interval = 1, 'iteration'
-        log_interval = 10, 'iteration'
+        log_interval = 100, 'iteration'
 
 
     # trainer.extend(extensions.Evaluator(val_iter, model2, device=args.gpus[0]),
@@ -145,8 +145,8 @@ def main():
     # Be careful to pass the interval directly to LogReport
     # (it determines when to emit log rather than when to read observations)
     print(str(args.epoch)+'_'+str(args.LR))
-    trainer.extend(extensions.LogReport(trigger=sub_log_interval, log_name=str(args.epoch)+'_'+str(args.LR)))
-    trainer.extend(extensions.LogReport(trigger=log_interval, log_name='10_' + str(args.epoch) + '_' + str(args.LR)))
+    trainer.extend(extensions.LogReport(trigger=sub_log_interval, log_name='1_' + str(args.epoch)+'_'+str(args.LR)))
+    trainer.extend(extensions.LogReport(trigger=log_interval, log_name=str(args.epoch) + '_' + str(args.LR)))
     trainer.extend(extensions.observe_lr(), trigger=sub_log_interval)
     trainer.extend(extensions.PrintReport([
         'epoch', 'iteration', 'main/loss', 'validation/main/loss',

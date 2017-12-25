@@ -85,7 +85,7 @@ def main():
     best_lr = args.LR
     resume_trainer = args.out + '/' + args.resume
 
-    set_random_seed(0)  ####固定
+    set_random_seed(args.epoch)  ####固定
 
     # Initialize the model to train
     model = archs[args.arch]()

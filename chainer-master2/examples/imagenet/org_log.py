@@ -73,7 +73,7 @@ def main():
                         help='Mean file (computed by compute_mean.py)')
     parser.add_argument('--resume', '-r', default='',
                         help='Initialize the trainer from given file')
-    parser.add_argument('--out', '-o', default='log_ORG2',
+    parser.add_argument('--out', '-o', default='log_ORG_div8',
                         help='Output directory')
     parser.add_argument('--root', '-R', default='/home/dnn/',
                         help='Root directory path of image files')
@@ -94,7 +94,7 @@ def main():
     train = train_imagenet.PreprocessedDataset(
         args.train, args.root, mean, model.insize) ##Falseを追加でも固定できる
     val = train_imagenet.PreprocessedDataset(
-        args.val, args.root, mean, model.insize, False)
+        args.val, args.root, mean, model.insize, random=False)
     # These iterators load the images with subprocesses running in parallel to
     # the training/validation.
     devices = tuple(args.gpus)
@@ -120,28 +120,32 @@ def main():
         val_interval = 5, 'epoch'
         log_interval = 1, 'epoch'
     else:
-        val_interval = 100000, 'iteration'
+        val_interval = 1, 'epoch'
+        small_log_interval = 1, 'iteration'
         log_interval = 100, 'iteration'
         print_interval = 1000, 'iteration'
-        snapshot_interval = 5, 'epoch'
+        snapshot_interval = 20, 'epoch'
         changeLR_interval = 1, 'epoch'
 
     trainer.extend(extensions.Evaluator(val_iter, model, device=args.gpus[0]),
                    trigger=val_interval)
     trainer.extend(extensions.dump_graph('main/loss'))
-    trainer.extend(extensions.snapshot(), trigger=snapshot_interval)
-    trainer.extend(extensions.snapshot_object(
-        model, 'model_iter_{.updater.iteration}'), trigger=snapshot_interval)
+    # trainer.extend(extensions.snapshot(), trigger=snapshot_interval)
+    # trainer.extend(extensions.snapshot_object(
+    #     model, 'model_iter_{.updater.iteration}'), trigger=snapshot_interval)
     # Be careful to pass the interval directly to LogReport
     # (it determines when to emit log rather than when to read observations)
-    trainer.extend(extensions.LogReport(trigger=log_interval))
-    trainer.extend(extensions.observe_lr(), trigger=log_interval)
+    # trainer.extend(extensions.LogReport(trigger=log_interval))
+    trainer.extend(extensions.LogReport(trigger=log_interval, log_name='main_log'))
+    trainer.extend(extensions.LogReport(trigger=small_log_interval, log_name='iteration_log'))
+    trainer.extend(extensions.LogReport(trigger=val_interval, log_name='epoch_log'))
+    trainer.extend(extensions.observe_lr(), trigger=small_log_interval)
     trainer.extend(extensions.PrintReport([
         'epoch', 'iteration', 'main/loss', 'validation/main/loss',
         'main/accuracy', 'validation/main/accuracy', 'lr'
     ]), trigger=print_interval)
     trainer.extend(extensions.ProgressBar(update_interval=2))
-    trainer.extend(extensions.ExponentialShift('lr',0.7,init=0.1), trigger=changeLR_interval)
+    trainer.extend(extensions.ExponentialShift('lr',0.7), trigger=changeLR_interval)
 
     if args.resume:
         chainer.serializers.load_npz(args.resume, trainer)
